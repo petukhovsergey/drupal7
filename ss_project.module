@@ -1,0 +1,953 @@
+<?php
+// $Id$
+
+/***************************************************************************************************
+ *  ss_project_cron_functions().
+ **************************************************************************************************/
+function ss_project_cron_functions() {
+//  dsm('<<=ss_project_cron_functions ===============================');
+  for ($i = 5; $i <= 50; $i++) {
+    $date_table = date("Ymd",time()-$i*60*60*24);
+    $name_table = 'stat_ads_'.$date_table;
+    if (db_table_exists($name_table)) {
+      ss_ads_bill_day($name_table);
+    }
+  }
+  for ($i = 5; $i <= 50; $i++) {
+    $date_table = date("Ymd",time()-$i*60*60*24);
+    $name_table = 'stat_stream_'.$date_table;
+    if (db_table_exists($name_table)) {
+      ss_stat_pay_day($name_table);
+    }
+  }
+}
+//function mymodul_cron() {
+//$default = time();
+//$last_crone = variable_get('last_start', $default);
+//if($default-$last_crone >= 3600){ //устанавливаем чтоб не чаще 1 раза в час.
+//variable_set('last_start', time());
+//my_func(); //функция, которую необходимо выполнить
+//}
+//}
+/***************************************************************************************************
+ * Implements hook_block_info().
+**************************************************************************************************/
+function ss_project_block_info() {
+  $blocks['ss_calendar'] = array(
+    'info' => t('SS Calendar'),
+  );
+  return $blocks;
+}
+
+/***************************************************************************************************
+* Implements hook_block_view().
+**************************************************************************************************/
+function ss_project_block_view($delta = '') {
+  switch ($delta) {
+    case 'ss_calendar':
+//      $block['subject'] = t('date view');
+      $block['content'] = drupal_get_form('ss_date_form');
+      break;
+  }
+  return $block;
+}
+
+
+/***************************************************************************************************
+ * SS form validate for Date setting
+ **************************************************************************************************/
+function ss_date_validate($form, &$form_state)  {
+//  dsm('>>=ss_date_validate=========== $form,$form_state  ===============    ');
+//  dsm($form);
+//  dsm($form_state);
+  $operation = $form_state['input']['op'];
+//  $form['editions']['stat_file']['#default_value'] = $form_state['input']['stat_file']; 
+  switch ($operation) {
+    case 'SET':
+      $_SESSION['ss_date_view'] = $form_state['input']['date_view'];
+      break;
+    case 'TODAY':
+      unset($_SESSION['ss_date_view']);
+      break;
+  }
+}
+
+
+/***************************************************************************************************
+*  SS form for Date setting
+**************************************************************************************************/
+function ss_date_form($form, &$form_state) {
+    $form['editions'] = array(
+      '#type' => 'fieldset', 
+//      '#title' => t('Set date for editions'), 
+      '#collapsible' => FALSE, 
+      '#collapsed' => FALSE, 
+      '#attributes' => array('class' => array('search-advanced')),
+    );
+   $form['editions']['date_view'] = array(
+//        '#type' => 'date_text', 
+        '#type' => 'date_popup', 
+//      '#type' => 'date_select', 
+//      '#title' => t(' SET ->   ').(!isset($_SESSION['ss_date_view']) ?
+//        	  date('d-m-Y',time())
+//			: $_SESSION['ss_date_view']['date']), 
+//      '#default_value' => array(
+//	        'date' => date('d-m-Y',time())), 
+//      '#value' => empty($form_state['build_info']['args'][4]) ?
+//        	  array('date' => date('d-m-Y',time()))
+//			: $form_state['build_info']['args'][4], 
+      '#value' => !isset($_SESSION['ss_date_view']) ?
+        	  array('date' => date('d-m-Y',time()))
+			: $_SESSION['ss_date_view'], 
+      '#date_format' => 'd-m-Y',
+//      '#date_label_position' => 'within', // See other available attributes and what they do in date_api_elements.inc
+      '#date_year_range' => '-10:+0', // Optional, used to set the year range (back 3 years and forward 3 years is the default).
+//      '#datepicker_options' => array(), // Optional, as of 7.x-2.6+, used to pass in additional parameters from the jQuery Datepicker widget.
+	//      '#prefix' => '<div class="criterion">', 
+//      '#suffix' => '</div>', 
+//      '#required' => FALSE,
+//       '#value' => time(),
+//       '#default_value' => time(),
+ //     '#default_value' => empty($form_state['build_info']['args'][4]['stat_file']) ? "" :
+ //  	                      $form_state['build_info']['args'][4]['stat_file'], 
+    );
+   $form['editions']['submit_set'] = array(
+      '#type' => 'submit', 
+      '#title' => t(' SET DATE '), 
+//      '#prefix' => '<div class="action">', 
+//      '#suffix' => '</div>', 
+      '#weight' => 80,
+      '#value' => 'SET',
+    );
+   $form['editions']['submit_today'] = array(
+      '#type' => 'submit', 
+      '#title' => t(' SET TODAY '), 
+//      '#prefix' => '<div class="action">', 
+//      '#suffix' => '</div>', 
+      '#weight' => 80,
+      '#value' => 'TODAY',
+    );
+    $form['#validate'][] = 'ss_date_validate';
+
+//   dsm('<<=ss_date_form ====== $form,$form_state  =============== ');
+//    dsm($form);
+//    dsm($form_state);
+  return $form;
+}
+
+/***************************************************************************************************
+ * Implementation of hook_init().
+ **************************************************************************************************/
+function ss_project_init() {
+  // Since this file should only be loaded on the front page, it cannot be
+  // declared in the info file.
+//  if (drupal_is_front_page()) {
+//    drupal_add_css(drupal_get_path('module', 'foo') . '/foo.css');
+    require_once(drupal_get_path('module','ss_project').'/'.'ss_project.ss_ads.inc');
+    require_once(drupal_get_path('module','ss_project').'/'.'ss_project.ss_search.inc');
+    require_once(drupal_get_path('module','ss_project').'/'.'ss_project.money.inc');
+    require_once(drupal_get_path('module','ss_project').'/'.'ss_project.taxonomy.inc');
+    require_once(drupal_get_path('module','ss_project').'/'.'ss_project.views.inc');
+//  dsm('<<=ss_project_init ===============================');
+//  }
+}
+
+/***************************************************************************************************
+ * Implements hook_menu().
+ **************************************************************************************************/
+function ss_project_menu() {
+  $items = array();
+
+  $items['ss_project/compress_date_operations/%'] = array(
+    'title' => t('Turn on Ads request'),
+    'description' => 'Turn on Ads request',
+    'page callback' => 'ss_views_starter',
+    'page arguments' => array('compress_date_operations','ss-operations',2,3),
+    'access callback' => 'ss_user_access',
+    'access arguments' => array('compress_date_operations'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['ss_project/compress_date_operations_user/%'] = array(
+    'title' => t('Turn on Ads request'),
+    'description' => 'Turn on Ads request',
+    'page callback' => 'ss_views_starter',
+    'page arguments' => array('compress_date_operations_user','ss-report-user',2),
+    'access callback' => 'ss_user_access',
+    'access arguments' => array('compress_date_operations_user'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['ss_project/compress_date_payments/%'] = array(
+    'title' => t('Turn on Ads request'),
+    'description' => 'Turn on Ads request',
+    'page callback' => 'ss_views_starter',
+    'page arguments' => array('compress_date_payments','ss-payments',2,3),
+    'access callback' => 'ss_user_access',
+    'access arguments' => array('compress_date_payments'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['ss_project/compress_date_payments_user/%'] = array(
+    'title' => t('Turn on Ads request'),
+    'description' => 'Turn on Ads request',
+    'page callback' => 'ss_views_starter',
+    'page arguments' => array('compress_date_payments_user','ss-report-user',2),
+    'access callback' => 'ss_user_access',
+    'access arguments' => array('compress_date_payments_user'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['ss_project/compress_month_operations/%'] = array(
+    'title' => t('Turn on Ads request'),
+    'description' => 'Turn on Ads request',
+    'page callback' => 'ss_views_starter',
+    'page arguments' => array('compress_month_operations','ss-operations',2,3),
+    'access callback' => 'ss_user_access',
+    'access arguments' => array('compress_month_operations'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['ss_project/compress_month_operations_user/%'] = array(
+    'title' => t('Turn on Ads request'),
+    'description' => 'Turn on Ads request',
+    'page callback' => 'ss_views_starter',
+    'page arguments' => array('compress_month_operations_user','ss-report-user',2),
+    'access callback' => 'ss_user_access',
+    'access arguments' => array('compress_month_operations_user'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['ss_project/compress_month_payments/%'] = array(
+    'title' => t('Turn on Ads request'),
+    'description' => 'Turn on Ads request',
+    'page callback' => 'ss_views_starter',
+    'page arguments' => array('compress_month_payments','ss-payments',2,3),
+    'access callback' => 'ss_user_access',
+    'access arguments' => array('compress_month_payments'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['ss_project/compress_month_payments_user/%'] = array(
+    'title' => t('Turn on Ads request'),
+    'description' => 'Turn on Ads request',
+    'page callback' => 'ss_views_starter',
+    'page arguments' => array('compress_month_payments_user','ss-report-user',2),
+    'access callback' => 'ss_user_access',
+    'access arguments' => array('compress_month_payments_user'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['ss_project/cron'] = array(
+    'title' => t('Cron SS project'),
+    'description' => 'Cron functions',
+    'page callback' => 'ss_project_cron_functions',
+//   'page arguments' => array('edition','ss-stream-edition-var2',2,3),
+    'access arguments' => array('administer conversion'),
+//    'access callback' => 'ss_user_access',
+//   'access arguments' => array('ss_cron'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['ss_project/searchresults'] = array(
+    'title' => t('View search results'),
+    'description' => 'SS project searching',
+    'page callback' => 'ss_views_starter',
+    'page arguments' => array('ss_search','ss-stream-search-results'),
+    'access callback' => 'ss_user_access',
+    'access arguments' => array('ss_search'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['ss_project/service_guru/%'] = array(
+    'title' => t('Service guru'),
+    'description' => 'Sevice guru for user',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ss_guru_form',2),
+    'access arguments' => array('administer conversion'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['ss_project/service_susanya/%'] = array(
+    'title' => t('Service susanya'),
+    'description' => 'Sevice susanya for user',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ss_susanya_form',2),
+    'access arguments' => array('administer conversion'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['ss_project/service_theme/%'] = array(
+    'title' => t('Service theme'),
+    'description' => 'Sevice theme for user',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ss_theme_form',2),
+    'access arguments' => array('administer conversion'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['ss_project/service_tariff/%'] = array(
+    'title' => t('Service tariff'),
+    'description' => 'Sevice tariff for user',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ss_tariff_form',2),
+    'access arguments' => array('administer conversion'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['ss_project/ss_search'] = array(
+    'title' => t('Search options'),
+    'description' => 'Search engine.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ss_search_form'),
+    'access callback' => 'ss_user_access',
+    'access arguments' => array('ss_search'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['ss_project/ss_view_edition/%'] = array(
+    'title' => t('Edition'),
+    'description' => 'Search stream by edition',
+ //   'page title' => 'kuku',
+ //   'title callback' => 'ss_project_page_title',
+ //   'title arguments' => array(3),
+    'page callback' => 'ss_views_starter',
+    'page arguments' => array('edition','ss-stream-edition-var2',2,3),
+    'access callback' => 'ss_user_access',
+    'access arguments' => array('view_edition'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['ss_project/ss_view_edition_structure/%'] = array(
+    'title' => t('Edition structure'),
+    'description' => 'Look edition structure',
+    'page callback' => 'ss_views_starter',
+    'page arguments' => array('edition_structure','ss-edition-structure',2,3),
+    'access callback' => 'ss_user_access',
+    'access arguments' => array('view_edition_structure'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['ss_project/ss_view_user'] = array(
+    'title' => t('Subscribe'),
+    'description' => 'Search stream for user',
+    'page callback' => 'drupal_goto',
+    'page arguments' => array('ss-stream-user-subscribe'),
+    'access callback' => 'ss_user_access',
+    'access arguments' => array('view_user'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['ss_project/stat_ads/admin'] = array(
+    'title' => t('Statistic of advertisement'),
+    'description' => 'Statistic Ads',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ss_stat_ads_form',2),
+    'access arguments' => array('administer conversion'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['ss_project/stat_ads/client'] = array(
+    'title' => t('Statistic of advertisement'),
+    'description' => 'Statistic Ads',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ss_stat_ads_form',2),
+    'access callback' => 'ss_user_access',
+    'access arguments' => array('stat_ads_client'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['ss_project/stat_stream/admin'] = array(
+    'title' => t('Statistic of stream'),
+    'description' => 'Statistic stream',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ss_stat_stream_form',2),
+    'access arguments' => array('administer conversion'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['ss_project/stat_stream/client'] = array(
+    'title' => t('Statistic of stream'),
+    'description' => 'Statistic stream',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ss_stat_stream_form',2),
+    'access callback' => 'ss_user_access',
+    'access arguments' => array('stat_stream_client'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['ss_project/turnoff_ads_request/%'] = array(
+    'title' => t('Turn off Ads request'),
+    'description' => 'Turn off Ads request',
+    'page callback' => 'ss_views_starter',
+    'page arguments' => array('turnoff_ads_request','ss-ads-request-client',2),
+    'access callback' => 'ss_user_access',
+    'access arguments' => array('turnoff_ads_request'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['ss_project/turnoff_banner/%'] = array(
+    'title' => t('Turn off banner'),
+    'description' => 'Turn off banner',
+    'page callback' => 'ss_views_starter',
+    'page arguments' => array('turnoff_banner','ss-banners-account',2),
+    'access callback' => 'ss_user_access',
+    'access arguments' => array('turnoff_banner'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['ss_project/turnon_ads_request/%'] = array(
+    'title' => t('Turn on Ads request'),
+    'description' => 'Turn on Ads request',
+    'page callback' => 'ss_views_starter',
+    'page arguments' => array('turnon_ads_request','ss-ads-request-client',2),
+    'access callback' => 'ss_user_access',
+    'access arguments' => array('turnon_ads_request'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['ss_project/turnon_banner/%'] = array(
+    'title' => t('Turn on banner'),
+    'description' => 'Turn on banner',
+    'page callback' => 'ss_views_starter',
+    'page arguments' => array('turnon_banner','ss-banners-account',2),
+    'access callback' => 'ss_user_access',
+    'access arguments' => array('turnon_banner'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['ss_project/usersubscribe/%'] = array(
+    'title' => t('Add edition to user subscribe'),
+    'description' => 'subscribe',
+    'page callback' => 'ss_views_starter',
+    'page arguments' => array('subscribe','ss-editions-user',2),
+    'access callback' => 'ss_user_access',
+    'access arguments' => array('subscribe'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['ss_project/userunsubscribe/%'] = array(
+    'title' => t('Remove edition from user subscribe'),
+    'description' => 'unsubscribe',
+    'page callback' => 'ss_views_starter',
+    'page arguments' => array('unsubscribe','ss-editions-user',2),
+    'access callback' => 'ss_user_access',
+    'access arguments' => array('unsubscribe'),
+    'type' => MENU_CALLBACK,
+  );
+
+//    variable_set('ss_stat_stream_date',' ');
+//  dsm('<<=ss_project_menu ====== $items  ===============    ');
+//    dsm($items);
+  return $items;
+}
+
+/***************************************************************************************************
+ * Title callback.
+ **************************************************************************************************/
+/*function ss_project_page_title($title) {
+  dsm('<<=ss_project_page_title ====== $title =============== '.$title);
+  return $title;
+}
+*/
+/***************************************************************************************************
+* Access user for SS
+ **************************************************************************************************/
+function ss_user_access($operation,$parm = NULL) {
+//  dsm('===_ss_user_access =====================================    ');
+//  dsm($GLOBALS['user']);
+  switch ($operation) {
+    case 'compress_date_operations':
+      if (!user_is_logged_in()) {
+        return FALSE;}
+	  else {
+        return TRUE;}		
+    case 'compress_date_operations_user':
+      if (!user_is_logged_in()) {
+        return FALSE;}
+	  else {
+        return TRUE;}		
+    case 'compress_date_payments':
+      if (!user_is_logged_in()) {
+        return FALSE;}
+	  else {
+        return TRUE;}		
+    case 'compress_date_payments_user':
+      if (!user_is_logged_in()) {
+        return FALSE;}
+	  else {
+        return TRUE;}		
+    case 'compress_month_operations':
+      if (!user_is_logged_in()) {
+        return FALSE;}
+	  else {
+        return TRUE;}		
+    case 'compress_month_operations_user':
+      if (!user_is_logged_in()) {
+        return FALSE;}
+	  else {
+        return TRUE;}		
+    case 'compress_month_payments':
+      if (!user_is_logged_in()) {
+        return FALSE;}
+	  else {
+        return TRUE;}		
+    case 'compress_month_payments_user':
+      if (!user_is_logged_in()) {
+        return FALSE;}
+	  else {
+        return TRUE;}		
+    case 'view_user':
+      if (!user_is_logged_in()) {
+        return FALSE;}
+	  else {
+        return TRUE;}		
+    case 'subscribe':
+      if (!user_is_logged_in()) {
+        return FALSE;}
+	  else {
+        return TRUE;}		
+    case 'unsubscribe':
+      if (!user_is_logged_in()) {
+        return FALSE;}
+	  else {
+        return TRUE;}		
+    case 'ss_search':
+      if (!user_is_logged_in()) {
+        return FALSE;}
+	  else {
+        if (
+        	  isset($GLOBALS['user'] -> roles [3]) // administrator
+//         ||   isset($GLOBALS['user'] -> roles [2]) // authenticated user
+         ||	  isset($GLOBALS['user'] -> roles [4]) // сусаня
+         ||	  isset($GLOBALS['user'] -> roles [5]) // гуру
+         ||	  isset($GLOBALS['user'] -> roles [6]) // архитектор
+         ||	  isset($GLOBALS['user'] -> roles [7]) // клиент-читатель
+         ||	  isset($GLOBALS['user'] -> roles [8]) // клиент-рекламодатель
+         ||	  isset($GLOBALS['user'] -> roles [9]) // аккаунт менеджер
+        	  ) { return TRUE;}
+//	    else { return FALSE;}
+      }		
+    case 'stat_ads_client':
+      if (!user_is_logged_in()) {
+        return FALSE;}
+	  else {
+        if (
+        	  isset($GLOBALS['user'] -> roles [3]) // administrator
+//         ||   isset($GLOBALS['user'] -> roles [2]) // authenticated user
+         ||	  isset($GLOBALS['user'] -> roles [4]) // сусаня
+//         ||	  isset($GLOBALS['user'] -> roles [5]) // гуру
+         ||	  isset($GLOBALS['user'] -> roles [6]) // архитектор
+//         ||	  isset($GLOBALS['user'] -> roles [7]) // клиент-читатель
+         ||	  isset($GLOBALS['user'] -> roles [8]) // клиент-рекламодатель
+         ||	  isset($GLOBALS['user'] -> roles [9]) // аккаунт менеджер
+        	  ) { return TRUE;}
+	    else { return FALSE;}
+      }		
+    case 'stat_stream_client':
+      if (!user_is_logged_in()) {
+        return FALSE;}
+	  else {
+        if (
+        	  isset($GLOBALS['user'] -> roles [3]) // administrator
+//         ||   isset($GLOBALS['user'] -> roles [2]) // authenticated user
+//         ||	  isset($GLOBALS['user'] -> roles [4]) // сусаня
+//         ||	  isset($GLOBALS['user'] -> roles [5]) // гуру
+//         ||	  isset($GLOBALS['user'] -> roles [6]) // архитектор
+//         ||	  isset($GLOBALS['user'] -> roles [7]) // клиент-читатель
+//         ||	  isset($GLOBALS['user'] -> roles [8]) // клиент-рекламодатель
+//         ||	  isset($GLOBALS['user'] -> roles [9]) // аккаунт менеджер
+        	  ) { return TRUE;}
+	    else { return FALSE;}
+      }		
+    case 'turnoff_banner':
+      if (!user_is_logged_in()) {
+        return FALSE;}
+	  else {
+        if (
+        	  isset($GLOBALS['user'] -> roles [3]) // administrator
+//         ||   isset($GLOBALS['user'] -> roles [2]) // authenticated user
+//         ||	  isset($GLOBALS['user'] -> roles [4]) // сусаня
+//         ||	  isset($GLOBALS['user'] -> roles [5]) // гуру
+         ||	  isset($GLOBALS['user'] -> roles [6]) // архитектор
+//         ||	  isset($GLOBALS['user'] -> roles [7]) // клиент-читатель
+//         ||	  isset($GLOBALS['user'] -> roles [8]) // клиент-рекламодатель
+         ||	  isset($GLOBALS['user'] -> roles [9]) // аккаунт менеджер
+        	  ) { return TRUE;}
+	    else { return FALSE;}
+      }		
+    case 'turnon_banner':
+      if (!user_is_logged_in()) {
+        return FALSE;}
+	  else {
+        if (
+        	  isset($GLOBALS['user'] -> roles [3]) // administrator
+//         ||   isset($GLOBALS['user'] -> roles [2]) // authenticated user
+//         ||	  isset($GLOBALS['user'] -> roles [4]) // сусаня
+//         ||	  isset($GLOBALS['user'] -> roles [5]) // гуру
+         ||	  isset($GLOBALS['user'] -> roles [6]) // архитектор
+//         ||	  isset($GLOBALS['user'] -> roles [7]) // клиент-читатель
+//         ||	  isset($GLOBALS['user'] -> roles [8]) // клиент-рекламодатель
+         ||	  isset($GLOBALS['user'] -> roles [9]) // аккаунт менеджер
+        	  ) { return TRUE;}
+	    else { return FALSE;}
+      }		
+    case 'turnon_ads_request':
+      if (!user_is_logged_in()) {
+        return FALSE;}
+	  else {
+        if (
+        	  isset($GLOBALS['user'] -> roles [3]) // administrator
+         ||   isset($GLOBALS['user'] -> roles [2]) // authenticated user
+         ||	  isset($GLOBALS['user'] -> roles [4]) // сусаня
+         ||	  isset($GLOBALS['user'] -> roles [5]) // гуру
+         ||	  isset($GLOBALS['user'] -> roles [6]) // архитектор
+         ||	  isset($GLOBALS['user'] -> roles [7]) // клиент-читатель
+         ||	  isset($GLOBALS['user'] -> roles [8]) // клиент-рекламодатель
+         ||	  isset($GLOBALS['user'] -> roles [9]) // аккаунт менеджер
+        	  ) { return TRUE;}
+	    else { return FALSE;}
+      }		
+    case 'turnoff_ads_request':
+      if (!user_is_logged_in()) {
+        return FALSE;}
+	  else {
+        if (
+        	  isset($GLOBALS['user'] -> roles [3]) // administrator
+         ||   isset($GLOBALS['user'] -> roles [2]) // authenticated user
+         ||	  isset($GLOBALS['user'] -> roles [4]) // сусаня
+         ||	  isset($GLOBALS['user'] -> roles [5]) // гуру
+         ||	  isset($GLOBALS['user'] -> roles [6]) // архитектор
+         ||	  isset($GLOBALS['user'] -> roles [7]) // клиент-читатель
+         ||	  isset($GLOBALS['user'] -> roles [8]) // клиент-рекламодатель
+         ||	  isset($GLOBALS['user'] -> roles [9]) // аккаунт менеджер
+        	  ) { return TRUE;}
+	    else { return FALSE;}
+      }		
+    case 'view_edition':
+	  return TRUE;
+//      if (!user_is_logged_in()) {
+//        return FALSE;}
+//	  else { return TRUE;}
+    case 'view_edition_structure':
+      if (!user_is_logged_in()) {
+        return FALSE;}
+	  else {
+        if (
+        	  isset($GLOBALS['user'] -> roles [3]) // administrator
+//         ||   isset($GLOBALS['user'] -> roles [2]) // authenticated user
+         ||	  isset($GLOBALS['user'] -> roles [4]) // сусаня
+//         ||	  isset($GLOBALS['user'] -> roles [5]) // гуру
+         ||	  isset($GLOBALS['user'] -> roles [6]) // архитектор
+//         ||	  isset($GLOBALS['user'] -> roles [7]) // клиент-читатель
+         ||	  isset($GLOBALS['user'] -> roles [8]) // клиент-рекламодатель
+         ||	  isset($GLOBALS['user'] -> roles [9]) // аккаунт менеджер
+        	  ) { return TRUE;}
+//	    else { return FALSE;}
+      }		
+  }
+}
+
+/***************************************************************************************************
+ * Implementation of hook_help().
+ **************************************************************************************************/
+function ss_project_help($path, $arg) {
+  switch ($path) {
+    case 'admin/help#ss_project':
+      $output = '<p>'. t('The clone module ss_project.') .'</p>';
+      $output .= '<p>'. t('Users with the "ss_project node" permission can utilize this functionality.') .'</p>';
+    return $output;
+  }
+}
+
+/****************************************************************************************************
+* hook_node_presave
+ **************************************************************************************************/
+function ss_project_node_presave($node) {
+  if ($node->type == 'ss_banners') {
+    $rate = $node -> field_banner['und'][0]['width']
+           * $node -> field_banner['und'][0]['height']
+		   / 200 / 200;
+    if ($rate > 1){
+	  $node -> field_banner_rate['und'][0]['value'] = $rate;}
+	else {  
+	  $node -> field_banner_rate['und'][0]['value'] = 1;}
+//    dsm($node);
+  }
+}
+
+/****************************************************************************************************
+ * Implementation of hook_form_alter().
+ ***************************************************************************************************/
+function ss_project_form_alter(&$form, &$form_state, $form_id) {
+
+  if ($form_id == 'taxonomy_form_term' && $form['vocabulary_machine_name']['#value'] == 'ss_search') {
+	$form['name']['#disabled'] = "disabled";
+    $form['name']['#default_value'] = 'search request';
+	$form['name']['#type'] = "hidden";
+	$form['path']['#disabled'] = "disabled";
+	$form['path']['#type'] = "hidden";
+  }	
+  
+//  if ($form_id == 'ss_ads_request_node_form' && !is_null($form['nid']['#value'])) {
+  if ($form_id == 'ss_ads_request_node_form') {
+    $destination = drupal_get_destination(); 
+    $form['#redirect'] = $destination['destination'];
+    $form['#action'] = $form['#action'] . '?destination='.$destination['destination'];
+    $form['field_ads_request_access']['#disabled'] = "disabled";
+//	$form['field_ads_request_access']['#type'] = "hidden";
+/*    if ($form['field_ads_request_access']['und']['#default_value']) {
+	  $form['field_ads_request_access']['#disabled'] = "disabled";
+	  $form['field_price']['#disabled'] = "disabled";
+	  $form['field_count_hit']['#disabled'] = "disabled";
+	  $form['field_stream_susa']['#disabled'] = "disabled";
+	  $form['field_stream_author']['#disabled'] = "disabled";
+	  $form['field_stream_theme']['#disabled'] = "disabled";
+	  $form['field_stream_favorite']['#disabled'] = "disabled";
+	  $form['field_stream_region']['#disabled'] = "disabled";
+	  $form['field_format']['#disabled'] = "disabled";
+//	  $form['field_interval_unix']['#disabled'] = "disabled";
+//	  $form['field_banner_id']['#disabled'] = "disabled";
+	  $form['field_interval_unix']['#type'] = "hidden";
+	  $form['field_banner_id']['#type'] = "hidden";
+    }
+	else {
+	}  
+*/      $result = db_query('SELECT nid,title FROM {node} nd 
+	 					  WHERE nd.uid = :uid
+						  AND nd.type = :type
+						  ORDER BY nd.title
+							', array(':uid' => $GLOBALS['user']->uid
+							,':type' => 'ss_banners'
+						));
+//	                      INNER JOIN {field_data_field_banner_access} ba
+//	                        ON nd.nid = ba.entity_id 
+//						  AND ba.field_banner_access_value = TRUE
+	  $ss_options=array();
+      foreach ($result as $record) {
+	    $ss_options[$record -> nid] = $record -> title; 
+      }
+      $form['field_banner_id'][$form['field_banner_id']['#language']]['#options'] = $ss_options;
+//    dsm($form);
+  }	
+  
+  if ($form_id == 'ss_payments_node_form'
+   || $form_id == 'ss_operations_node_form') {
+    $destination = drupal_get_destination(); 
+    $form['#redirect'] = $destination['destination'];
+    $form['#action'] = $form['#action'] . '?destination='.$destination['destination'];
+ //	$form['title']['#disabled'] = "disabled";
+	$form['title']['#type'] = "hidden";
+//	$form['title']['#required'] = FALSE;
+    if (empty($form['title']['#default_value'])) {
+      $form['title']['#default_value'] = $form_id.'-->'.date('c');
+	}
+//	$form['field_banner_access']['und']['#default_value'] = 0;
+//	$form['field_banner_access']['#disabled'] = "disabled";
+//	$form['field_banner_rate']['#disabled'] = "disabled";
+  }
+  
+  if ($form_id == 'ss_guru_form') {
+    $destination = drupal_get_destination(); 
+//    $form['#redirect'] = $destination['destination'];
+//    $form['#action'] = $form['#action'] . '?destination='.$destination['destination'];
+  }	
+  
+  if ($form_id == 'user_profile_form') {
+    $destination = drupal_get_destination(); 
+    $form['#redirect'] = $destination['destination'];
+    $form['#action'] = $form['#action'] . '?destination='.$destination['destination'];
+	$form['field_cost_guru']['#disabled'] = "disabled";
+	$form['field_cost_susanya']['#disabled'] = "disabled";
+	$form['field_is_view_ads']['#disabled'] = "disabled";
+//    dsm('<<=ss_project_form_alter ========== $form_id,$form,$form_state======    '.$form_id);
+//    dsm($form);
+//	dsm($form_state);
+  }	
+  
+  if ($form_id == 'ss_banners_node_form') {
+    $destination = drupal_get_destination(); 
+    $form['#redirect'] = $destination['destination'];
+    $form['#action'] = $form['#action'] . '?destination='.$destination['destination'];
+	$form['field_banner_access']['und']['#default_value'] = 0;
+	$form['field_banner_access']['#disabled'] = "disabled";
+	$form['field_banner_rate']['#disabled'] = "disabled";
+  }	
+  
+  if ($form_id == 'ss_twit_node_form') {
+//    dsm($_GET);
+//    dsm($_POST);
+    $destination = drupal_get_destination(); 
+    $form['#redirect'] = $destination['destination'];
+    $form['#action'] = $form['#action'] . '?destination='.$destination['destination'];
+  	$form['title']['#type'] = "hidden";
+	$form['title']['#disabled'] = "disabled";
+    if (empty($form['nid']['#value'])) {
+      $form['title']['#default_value'] = $form['uid']['#value'].'-twit-'.date('c');
+ 	  $form['language']['#default_value'] = 'ru';
+	  $result = db_query('SELECT tid,name FROM {taxonomy_term_data} td 
+	                      INNER JOIN {field_data_field_code_user} cu
+	                        ON td.tid = cu.entity_id 
+	 					  WHERE cu.field_code_user_uid = :uid
+ 							AND cu.bundle = :taxonomy
+						  ORDER BY td.name
+							', array(':uid' => $form['#node'] -> uid
+							,':taxonomy' => 'ss_author'
+						));
+	  $ss_options=array();
+      foreach ($result as $record) {
+	    $ss_options[$record -> tid] = $record -> name; 
+        // Perform operations on $record->title, etc. here.
+      }
+      if (empty($ss_options)) {
+        $ss_options['58'] = taxonomy_term_load('58') -> name; // Reader = guru
+	    $form['field_pic']['#disabled'] = "disabled";
+	    $form['field_filemedia']['#disabled'] = "disabled";
+        unset($form['field_ist1']['und']['add_more']);
+	  }
+      $form['field_twit_author'][$form['field_twit_author']['#language']]['#options'] = $ss_options;
+	  $form['body']['und'][0]['value']['#default_value'] = $_GET['selection'];
+	  $form['field_ist1']['und'][0]['#default_value'] = array(
+        'url' => $_GET['url'],
+	    'title' => $_GET['title'],
+	  );
+	}
+	else {
+	  $form['field_twit_author']['#disabled'] = "disabled";
+	}
+  }
+  
+  if ($form_id == 'ss_stream_node_form') {
+    $destination = drupal_get_destination(); 
+    $form['#redirect'] = $destination['destination'];
+    $form['#action'] = $form['#action'] . '?destination='.$destination['destination'];
+    if (isset($GLOBALS['user'] -> roles [6])) { // архитектор
+	  }
+	  else {
+	    $form['title']['#type'] = "hidden";
+	}	
+    if (empty($form['title']['#default_value'])) {
+      $form['title']['#default_value'] = $form['uid']['#value'].'-stream-'.date('c');
+	}
+    if (empty($form['nid']['#value'])) {
+ 	  $form['language']['#default_value'] = 'ru';
+	  $form['field_twit_user'][$form['field_twit_user']['#language']][0]['uid']['#default_value'] = $GLOBALS['user']->uid;
+      if (strpos($_GET['q'],'/append') <> 0) {
+	    $form['field_stream_author']['#disabled'] = "disabled";
+        }
+      else {	  
+	  	$result = db_query('SELECT tid,name FROM {taxonomy_term_data} td 
+	                      INNER JOIN {field_data_field_code_user} cu
+	                        ON td.tid = cu.entity_id 
+	 					  WHERE cu.field_code_user_uid = :uid
+ 							AND cu.bundle = :taxonomy
+						  ORDER BY td.name
+							', array(':uid' => $form['#node'] -> uid
+							,':taxonomy' => 'ss_author'
+						));
+	    $ss_options=array();
+        foreach ($result as $record) {
+	      $ss_options[$record -> tid] = $record -> name; 
+        }
+        $form['field_stream_author'][$form['field_stream_author']['#language']]['#options'] = $ss_options;
+      }
+      $result = db_query('SELECT tid,name FROM {taxonomy_term_data} td 
+	                  INNER JOIN {field_data_field_sucode_user} cu
+	                  ON td.tid = cu.entity_id 
+	 		  WHERE cu.field_sucode_user_uid = :uid
+ 				AND cu.bundle = :taxonomy
+			  ORDER BY td.name
+			', array(':uid' => $form['#node'] -> uid
+				,':taxonomy' => 'ss_susanya'
+			));
+	  $ss_options=array();
+      foreach ($result as $record) {
+	    $ss_options[$record -> tid] = $record -> name; 
+      }
+      $form['field_stream_susa'][$form['field_stream_susa']['#language']]['#options'] = $ss_options;
+      $result = db_query('SELECT tid,name FROM {taxonomy_term_data} td 
+	                  INNER JOIN {field_data_field_theme_code_user} cu
+	                  ON td.tid = cu.entity_id 
+	 		  WHERE cu.field_theme_code_user_uid = :uid
+ 				AND cu.bundle = :taxonomy
+			  ORDER BY td.name
+			', array(':uid' => $form['#node'] -> uid
+				,':taxonomy' => 'ss_theme'
+			));
+	  $ss_options=array();
+      foreach ($result as $record) {
+	    $ss_options[$record -> tid] = $record -> name; 
+      }
+	  $form['field_stream_theme'][$form['field_stream_theme']['#language']]['#options'] = $ss_options;
+	  $form['body']['und'][0]['value']['#default_value'] = $_GET['selection'];
+	  $form['field_ist1']['und'][0]['#default_value'] = array(
+        'url' => $_GET['url'],
+	    'title' => $_GET['title'],
+	  );
+    }
+    else {
+      if (isset($GLOBALS['user'] -> roles [6])) { // архитектор
+	  }
+	  else {
+	    $form['field_stream_author']['#disabled'] = "disabled";
+	    $form['field_stream_susa']['#disabled'] = "disabled";
+	  }	
+    }
+    if (empty($form['field_twit_user'][$form['field_twit_user']['#language']][0]['uid']['#default_value'])) {
+	  $form['field_twit_user'][$form['field_twit_user']['#language']][0]['uid']['#default_value'] = $form['uid']['#value'];
+	}
+  }
+  
+  if (strpos($_GET['q'],'/append') <> 0) {
+    $get_string = substr($_GET['q'],0,strpos($_GET['q'],"/append"));
+    $origin_nid = trim(substr(strrchr($get_string,"/"),1));
+
+    $source_node = node_load($origin_nid);
+//     dsm($source_node);
+
+//	$form['body']['und'][0]['#default_value'] = $source_node -> body['ru'][0]['value'];
+	$form['body']['und'][0]['value']['#default_value'] = $source_node -> body['ru'][0]['value'];
+	$form['language']['#default_value'] = $source_node -> language;
+    if (!empty($source_node -> field_note)) {
+  	  $form['field_note_guru']['und'][0]['value']['#default_value'] = $source_node -> field_note['und'][0]['value'];
+    }
+	if (!empty($source_node->field_ist1)) {
+/*	  $form['field_ist1'] = array(
+         'ru' => $source_node -> field_ist1['ru']
+		 );
+      $items_test = field_get_items('node', $source_node, 'field_ist1');
+      $items_test = field_view_field('node', $source_node, 'field_ist1');
+	  dsm($items_test);
+      $items_test = field_view_value('node', $source_node, 'field_ist1');
+	  dsm($items_test);
+*/
+	  
+      unset($form['field_ist1']['und']['add_more']);
+	  $form['field_ist1']['und']['#max_delta'] = count($source_node -> field_ist1['ru'])-1;
+      $form['field_ist1']['und'][$form['field_ist1']['und']['#max_delta']+1] = $form['field_ist1']['und']['0'];
+      $form['field_ist1']['und'][$form['field_ist1']['und']['#max_delta']+1]['#delta'] = $form['field_ist1']['und']['#max_delta']+1;
+      $form['field_ist1']['und'][$form['field_ist1']['und']['#max_delta']+1]['#weight'] = $form['field_ist1']['und']['#max_delta']+1;
+      $form['field_ist1']['und'][$form['field_ist1']['und']['#max_delta']+1]['_weight']['#delta'] = $form['field_ist1']['und']['#max_delta']+1;
+      $form['field_ist1']['und'][$form['field_ist1']['und']['#max_delta']+1]['_weight']['#default_value'] = $form['field_ist1']['und']['#max_delta']+1;
+      foreach($source_node -> field_ist1['ru'] as $key => $item){
+	    $form['field_ist1']['und'][$key] = $form['field_ist1']['und']['0'];
+	    $form['field_ist1']['und'][$key]['#delta'] = $key;
+	    $form['field_ist1']['und'][$key]['#weight'] = $key;
+	    $form['field_ist1']['und'][$key]['_weight']['#delta'] = $key;
+	    $form['field_ist1']['und'][$key]['_weight']['#default_value'] = $key;
+	    $form['field_ist1']['und'][$key]['#default_value'] = array(
+          'url' => $source_node -> field_ist1['ru'][$key]['url'],
+	      'title' => $source_node -> field_ist1['ru'][$key]['title'],
+	      'attributes' => $source_node -> field_ist1['ru'][$key]['attributes'],
+	    );
+	  }
+	}  
+    else{$form['field_ist1'] = array();}
+	if (!empty($source_node->field_pic)) {
+//	  $form['field_pic']['und']['#file_upload_delta'] = count($source_node -> field_pic['und']);
+//      $form['field_pic']['und'][$form['field_pic']['und']['#file_upload_delta']] = $form['field_pic']['und']['0'];
+//      $form['field_pic']['und'][$form['field_pic']['und']['#file_upload_delta']]['#delta'] = 0;
+//      $form['field_pic']['und'][$form['field_pic']['und']['#file_upload_delta']]['#weight'] = $form['field_pic']['und']['#file_upload_delta'];
+      foreach($source_node -> field_pic['und'] as $key => $item){
+	    $form['field_pic']['und'][$key] = $form['field_pic']['und']['0'];
+	    $form['field_pic']['und'][$key]['#delta'] = $key;
+	    $form['field_pic']['und'][$key]['#weight'] = $key;
+	    $form['field_pic']['und'][$key]['#default_value'] = $source_node -> field_pic['und'][$key];
+	  }
+	}  
+	else{ $form['field_pic'] = array();}
+	if (!empty($source_node->field_filemedia)) {
+      foreach($source_node -> field_filemedia['und'] as $key => $item){
+	    $form['field_filemedia']['und'][$key] = $form['field_filemedia']['und']['0'];
+	    $form['field_filemedia']['und'][$key]['#delta'] = $key;
+	    $form['field_filemedia']['und'][$key]['#weight'] = $key;
+	    $form['field_filemedia']['und'][$key]['#default_value'] = $source_node -> field_filemedia['und'][$key];
+	  }
+	}  
+	else{$form['field_filemedia'] = array();}
+	$form['field_twit_user']['und'][0]['uid']['#default_value'] = $source_node -> uid;
+	//field_twit_user['ru'][0]['uid'];
+	$form['field_stream_author']['und']['#default_value'] = array(
+	  '0' => $source_node -> field_twit_author['ru'][0]['tid'],
+	);
+  }
+//  user_profile_form
+//    dsm('<<=ss_project_form_alter ========== $form_id,$form,$form_state======    '.$form_id);
+//    dsm($form);
+//    dsm($source_node);
+//	dsm($form_state);
+}
+
